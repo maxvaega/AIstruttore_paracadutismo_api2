@@ -70,92 +70,98 @@ app.get("/messaging-webhook", (req, res) => {
 // });
 
 app.post("/messaging-webhook", async (req, res) => {
-  let body = req.body;
-  console.log(`## Received webhook:`);
-
-  if (body.object === "instagram") {
-    res.status(200).send("EVENT_RECEIVED");
-
-    body.entry.forEach(async function (entry) {
-      entry.messaging.forEach(async function (webhookEvent) {
-        // Discard uninteresting events
-        if ("read" in webhookEvent) {
-          console.log("Got a read event");
-          return;
-        } else if ("delivery" in webhookEvent) {
-          console.log("Got a delivery event");
-          return;
-        } else if (webhookEvent.message && webhookEvent.message.is_echo) {
-          console.log(
-            "Got an echo of our send, mid = " + webhookEvent.message.mid
-          );
-          return;
-        } else if (webhookEvent.message && webhookEvent.message.is_deleted) {
-          console.log("Got a deleted messag");
-          return;
-        }
-        if (!webhookEvent.message) {
-          console.log("Cannot find message");
-          return;
-        }
-
-        if (!webhookEvent.message.text) {
-          console.log("cannot process not textual message");
-          return;
-        }
-
-        console.dir(entry, { depth: null });
-
-        // Get the sender PSID
-        let senderPsid = webhookEvent.sender.id;
-        if (!!senderPsid) {
-          console.log("now I can analize event for psid", senderPsid);
-          const msg = webhookEvent.message.text;
-
-          axios
-            .post(
-                `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
-                {
-                recipient: {
-                    id: senderPsid,
-                },
-                messaging_type: "RESPONSE",
-                message: {
-                    text: msg,
-                },
-                access_token: process.env.ACCESS_TOKEN,
-                },
-                { timeout: 5000 } // timeout di 5 secondi
-            )
-            .then(function (response) {
+    let body = req.body;
+    console.log(`## Received webhook:`);
+  
+    if (body.object === "instagram") {
+      // Invia la risposta immediatamente per non bloccare il webhook
+      res.status(200).send("EVENT_RECEIVED");
+  
+      try {
+        // Usa il ciclo for...of per gestire le operazioni asincrone correttamente
+        for (const entry of body.entry) {
+          for (const webhookEvent of entry.messaging) {
+            // Discard uninteresting events
+            if ("read" in webhookEvent) {
+              console.log("Got a read event");
+              continue;
+            } else if ("delivery" in webhookEvent) {
+              console.log("Got a delivery event");
+              continue;
+            } else if (webhookEvent.message && webhookEvent.message.is_echo) {
+              console.log(
+                "Got an echo of our send, mid = " + webhookEvent.message.mid
+              );
+              continue;
+            } else if (webhookEvent.message && webhookEvent.message.is_deleted) {
+              console.log("Got a deleted message");
+              continue;
+            }
+  
+            if (!webhookEvent.message) {
+              console.log("Cannot find message");
+              continue;
+            }
+  
+            if (!webhookEvent.message.text) {
+              console.log("Cannot process non-textual message");
+              continue;
+            }
+  
+            console.dir(entry, { depth: null });
+  
+            // Get the sender PSID
+            let senderPsid = webhookEvent.sender.id;
+            if (!!senderPsid) {
+              console.log("Now I can analyze event for psid", senderPsid);
+              const msg = webhookEvent.message.text;
+  
+              try {
+                // Chiamata axios con await
+                const response = await axios.post(
+                  `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
+                  {
+                    recipient: {
+                      id: senderPsid,
+                    },
+                    messaging_type: "RESPONSE",
+                    message: {
+                      text: msg,
+                    },
+                    access_token: process.env.ACCESS_TOKEN,
+                  },
+                  { timeout: 5000 } // timeout di 5 secondi
+                );
+  
                 console.log("SENDED PONG => OK :)");
                 console.log("Facebook API response:", response.data);
-            })
-            .catch(function (error) {
+              } catch (error) {
                 console.error("SENDED PONG => KO ;(");
                 if (error.code === 'ECONNABORTED') {
-                console.error("Request timed out");
-                }
-                if (error.response) {
-                console.error("Error response data:", error.response.data);
-                console.error("Error status:", error.response.status);
-                console.error("Error headers:", error.response.headers);
+                  console.error("Request timed out");
+                } else if (error.response) {
+                  console.error("Error response data:", error.response.data);
+                  console.error("Error status:", error.response.status);
+                  console.error("Error headers:", error.response.headers);
                 } else if (error.request) {
-                console.error("No response received:", error.request);
+                  console.error("No response received:", error.request);
                 } else {
-                console.error("Error in setup:", error.message);
+                  console.error("Error in setup:", error.message);
                 }
-            });
-
-        } else {
-          console.log("### NOT FOUND PSID");
+              }
+            } else {
+              console.log("### NOT FOUND PSID");
+            }
+          }
         }
-      });
-    });
-  } else {
-    res.sendStatus(404); 
-  }
-});
+      } catch (error) {
+        console.error("Error processing webhook:", error);
+      }
+    } else {
+      res.sendStatus(404);
+    }
+  });
+  
 
 // start the server.
 const listener = app.listen(3000, () => {
