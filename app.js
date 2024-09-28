@@ -118,6 +118,7 @@ app.post("/messaging-webhook", async (req, res) => {
   
               try {
                 // Chiamata axios con await
+                console.log("Trying axios POST")
                 const response = await axios.post(
                   `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
                   {
@@ -130,7 +131,7 @@ app.post("/messaging-webhook", async (req, res) => {
                     },
                     access_token: process.env.ACCESS_TOKEN,
                   },
-                  { timeout: 5000 } // timeout di 5 secondi
+                  { timeout: 15000 } // timeout di 5 secondi
                 );
   
                 console.log("SENDED PONG => OK :)");
