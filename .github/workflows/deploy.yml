@@ -1,0 +1,40 @@
+name: Deploy to AWS Lambda
+
+# Esegui l'azione quando fai push sul branch "main"
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout del codice dalla tua repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Installazione di Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    # Installazione delle dipendenze
+    - name: Install dependencies
+      run: npm install
+
+    # Zippa il codice
+    - name: Zip code
+      run: zip -r function.zip .
+
+    # Carica la funzione Lambda su AWS
+    - name: Deploy to AWS Lambda
+      uses: aws-actions/aws-lambda-deploy@v1.0.0
+      with:
+        function-name: 'messaging-webhook'
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'us-east-1' # o la regione che preferisci
+        zip-file: 'function.zip'
