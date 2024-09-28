@@ -114,25 +114,39 @@ app.post("/messaging-webhook", async (req, res) => {
 
           axios
             .post(
-              `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
-              {
+                `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
+                {
                 recipient: {
-                  id: senderPsid,
+                    id: senderPsid,
                 },
                 messaging_type: "RESPONSE",
                 message: {
-                  text: msg,
+                    text: msg,
                 },
                 access_token: process.env.ACCESS_TOKEN,
-              }
+                },
+                { timeout: 5000 } // timeout di 5 secondi
             )
             .then(function (response) {
-              console.log("SENDED PONG => OK :)");
+                console.log("SENDED PONG => OK :)");
+                console.log("Facebook API response:", response.data);
             })
             .catch(function (error) {
-              console.error("SENDED PON => KO ;(");
-              console.error(error);
+                console.error("SENDED PONG => KO ;(");
+                if (error.code === 'ECONNABORTED') {
+                console.error("Request timed out");
+                }
+                if (error.response) {
+                console.error("Error response data:", error.response.data);
+                console.error("Error status:", error.response.status);
+                console.error("Error headers:", error.response.headers);
+                } else if (error.request) {
+                console.error("No response received:", error.request);
+                } else {
+                console.error("Error in setup:", error.message);
+                }
             });
+
         } else {
           console.log("### NOT FOUND PSID");
         }
