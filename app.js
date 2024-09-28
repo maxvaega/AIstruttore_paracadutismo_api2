@@ -130,8 +130,7 @@ app.post("/messaging-webhook", async (req, res) => {
                       text: msg,
                     },
                     access_token: process.env.ACCESS_TOKEN,
-                  },
-                  { timeout: 15000 } // timeout di 5 secondi
+                  }
                 );
   
                 console.log("SENDED PONG => OK :)");
