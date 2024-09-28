@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config(); 
 
 const express = require("express");
 const { urlencoded, json } = require("body-parser");
@@ -137,11 +137,11 @@ app.post("/messaging-webhook", async (req, res) => {
       });
     });
   } else {
-    res.sendStatus(404);
+    res.sendStatus(404); 
   }
 });
 
-// start the server
+// start the server.
 const listener = app.listen(3000, () => {
   console.log(`The app is listening on port ${listener.address().port}`);
 
