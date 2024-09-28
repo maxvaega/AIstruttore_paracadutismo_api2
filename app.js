@@ -70,28 +70,27 @@ app.get("/messaging-webhook", (req, res) => {
 // });
 
 app.post("/messaging-webhook", async (req, res) => {
-    let body = req.body;
+    const body = req.body;
     console.log(`## Received webhook:`);
   
     if (body.object === "instagram") {
-      // Invia la risposta immediatamente per non bloccare il webhook
+      // Send the response immediately to the webhook
       res.status(200).send("EVENT_RECEIVED");
   
       try {
-        // Usa il ciclo for...of per gestire le operazioni asincrone correttamente
-        for (const entry of body.entry) {
+        // Process the entries asynchronously after sending the response
+        const processMessages = body.entry.map(async (entry) => {
+          // Loop through each message in the entry
           for (const webhookEvent of entry.messaging) {
             // Discard uninteresting events
-            if ("read" in webhookEvent) {
+            if (webhookEvent.read) {
               console.log("Got a read event");
               continue;
-            } else if ("delivery" in webhookEvent) {
+            } else if (webhookEvent.delivery) {
               console.log("Got a delivery event");
               continue;
             } else if (webhookEvent.message && webhookEvent.message.is_echo) {
-              console.log(
-                "Got an echo of our send, mid = " + webhookEvent.message.mid
-              );
+              console.log(`Got an echo of our send, mid = ${webhookEvent.message.mid}`);
               continue;
             } else if (webhookEvent.message && webhookEvent.message.is_deleted) {
               console.log("Got a deleted message");
@@ -111,30 +110,24 @@ app.post("/messaging-webhook", async (req, res) => {
             console.dir(entry, { depth: null });
   
             // Get the sender PSID
-            let senderPsid = webhookEvent.sender.id;
-            if (!!senderPsid) {
-              console.log("Now I can analyze event for psid", senderPsid);
+            const senderPsid = webhookEvent.sender.id;
+            if (senderPsid) {
+              console.log("Now I can analyze event for PSID", senderPsid);
               const msg = webhookEvent.message.text;
   
+              // Handle axios call asynchronously without blocking the response
               try {
-                // Chiamata axios con await
-                console.log("Trying axios POST")
-                const response = await axios.post(
+                console.log("Trying axios POST");
+                await axios.post(
                   `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
                   {
-                    recipient: {
-                      id: senderPsid,
-                    },
+                    recipient: { id: senderPsid },
                     messaging_type: "RESPONSE",
-                    message: {
-                      text: msg,
-                    },
+                    message: { text: msg },
                     access_token: process.env.ACCESS_TOKEN,
                   }
                 );
-  
                 console.log("SENDED PONG => OK :)");
-                console.log("Facebook API response:", response.data);
               } catch (error) {
                 console.error("SENDED PONG => KO ;(");
                 if (error.code === 'ECONNABORTED') {
@@ -153,7 +146,11 @@ app.post("/messaging-webhook", async (req, res) => {
               console.log("### NOT FOUND PSID");
             }
           }
-        }
+        });
+  
+        // Execute all promises in parallel
+        await Promise.all(processMessages);
+  
       } catch (error) {
         console.error("Error processing webhook:", error);
       }
@@ -161,6 +158,7 @@ app.post("/messaging-webhook", async (req, res) => {
       res.sendStatus(404);
     }
   });
+  
   
 
 // start the server.
