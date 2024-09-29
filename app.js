@@ -116,45 +116,37 @@ app.post("/messaging-webhook", async (req, res) => {
               console.log("Now I can analyze event for PSID", senderPsid);
               const msg = webhookEvent.message.text;
   
-                // Utilizza waitUntil per gestire la chiamata POST in background
+              // Utilizza waitUntil per eseguire la chiamata POST come una Promise
               waitUntil(
-                (async () => {
-                  for (const entry of body.entry) {
-                    for (const webhookEvent of entry.messaging) {
-                      const senderPsid = webhookEvent.sender.id;
-                      const msg = webhookEvent.message.text;
-
-                      try {
-                        console.log("Trying axios POST");
-                        // Effettua la chiamata POST a Facebook
-                        await axios.post(
-                          `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
-                          {
-                            recipient: { id: senderPsid },
-                            messaging_type: "RESPONSE",
-                            message: { text: msg },
-                            access_token: process.env.ACCESS_TOKEN,
-                          }
-                        );
-                        console.log("SENDED PONG => OK :)");
-                      } catch (error) {
-                        console.error("SENDED PONG => KO ;(");
-                        // Gestione degli errori dettagliata
-                        if (error.code === 'ECONNABORTED') {
-                          console.error("Request timed out");
-                        } else if (error.response) {
-                          console.error("Error response data:", error.response.data);
-                          console.error("Error status:", error.response.status);
-                          console.error("Error headers:", error.response.headers);
-                        } else if (error.request) {
-                          console.error("No response received:", error.request);
-                        } else {
-                          console.error("Error in setup:", error.message);
-                        }
-                      }
+                axios
+                  .post(
+                    `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
+                    {
+                      recipient: { id: senderPsid },
+                      messaging_type: "RESPONSE",
+                      message: { text: msg },
+                      access_token: process.env.ACCESS_TOKEN,
                     }
-                  }
-                }))
+                  )
+                  .then(() => {
+                    console.log("SENDED PONG => OK :)");
+                  })
+                  .catch((error) => {
+                    console.error("SENDED PONG => KO ;(");
+                    // Gestione dettagliata degli errori
+                    if (error.code === 'ECONNABORTED') {
+                      console.error("Request timed out");
+                    } else if (error.response) {
+                      console.error("Error response data:", error.response.data);
+                      console.error("Error status:", error.response.status);
+                      console.error("Error headers:", error.response.headers);
+                    } else if (error.request) {
+                      console.error("No response received:", error.request);
+                    } else {
+                      console.error("Error in setup:", error.message);
+                    }
+                  })
+              );
             } else {
               console.log("### NOT FOUND PSID");
             }
