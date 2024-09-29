@@ -11,6 +11,8 @@ const fs = require("node:fs/promises");
 const crypto = require("crypto");
 const app = express();
 
+import { waitUntil } from '@vercel/functions'; //new vercel function
+
 
 // Parse application/x-www-form-urlencoded
 app.use(
@@ -115,33 +117,45 @@ app.post("/messaging-webhook", async (req, res) => {
               console.log("Now I can analyze event for PSID", senderPsid);
               const msg = webhookEvent.message.text;
   
-              // Handle axios call asynchronously without blocking the response
-              try {
-                console.log("Trying axios POST");
-                await axios.post(
-                  `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
-                  {
-                    recipient: { id: senderPsid },
-                    messaging_type: "RESPONSE",
-                    message: { text: msg },
-                    access_token: process.env.ACCESS_TOKEN,
+                // Utilizza waitUntil per gestire la chiamata POST in background
+              waitUntil(
+                (async () => {
+                  for (const entry of body.entry) {
+                    for (const webhookEvent of entry.messaging) {
+                      const senderPsid = webhookEvent.sender.id;
+                      const msg = webhookEvent.message.text;
+
+                      try {
+                        console.log("Trying axios POST");
+                        // Effettua la chiamata POST a Facebook
+                        await axios.post(
+                          `https://graph.facebook.com/v20.0/${process.env.PAGE_ID}/messages`,
+                          {
+                            recipient: { id: senderPsid },
+                            messaging_type: "RESPONSE",
+                            message: { text: msg },
+                            access_token: process.env.ACCESS_TOKEN,
+                          }
+                        );
+                        console.log("SENDED PONG => OK :)");
+                      } catch (error) {
+                        console.error("SENDED PONG => KO ;(");
+                        // Gestione degli errori dettagliata
+                        if (error.code === 'ECONNABORTED') {
+                          console.error("Request timed out");
+                        } else if (error.response) {
+                          console.error("Error response data:", error.response.data);
+                          console.error("Error status:", error.response.status);
+                          console.error("Error headers:", error.response.headers);
+                        } else if (error.request) {
+                          console.error("No response received:", error.request);
+                        } else {
+                          console.error("Error in setup:", error.message);
+                        }
+                      }
+                    }
                   }
-                );
-                console.log("SENDED PONG => OK :)");
-              } catch (error) {
-                console.error("SENDED PONG => KO ;(");
-                if (error.code === 'ECONNABORTED') {
-                  console.error("Request timed out");
-                } else if (error.response) {
-                  console.error("Error response data:", error.response.data);
-                  console.error("Error status:", error.response.status);
-                  console.error("Error headers:", error.response.headers);
-                } else if (error.request) {
-                  console.error("No response received:", error.request);
-                } else {
-                  console.error("Error in setup:", error.message);
-                }
-              }
+                }))
             } else {
               console.log("### NOT FOUND PSID");
             }
