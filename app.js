@@ -10,8 +10,7 @@ const fetch = require("node-fetch-commonjs");
 const fs = require("node:fs/promises");
 const crypto = require("crypto");
 const app = express();
-
-import { waitUntil } from '@vercel/functions'; //new vercel function
+const { waitUntil } = require('@vercel/functions'); //new vercel function
 
 
 // Parse application/x-www-form-urlencoded
